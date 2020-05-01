@@ -1,20 +1,27 @@
 package com.vtence.chip8
 
-import java.lang.IllegalArgumentException
+import java.nio.ByteBuffer
 
 sealed class Statement(
     open val mnemonic: String? = null,
     open val operands: List<String> = listOf(),
     open val comment: String? = null
-)
+) {
+    fun compileTo(output: ByteBuffer) {
+        INSTRUCTIONS_TABLE.find { it.mnemonic == mnemonic }?.compile(output, operands)
+            ?: throw UnsupportedOperationException(mnemonic)
+    }
+}
 
 object BlankStatement : Statement()
 
 data class CommentStatement(override val comment: String?) : Statement(comment = comment)
 
-data class AssemblyStatement(override val mnemonic: String?,
-                             override val operands: List<String> = listOf(),
-                             override val comment: String?) :
+data class AssemblyStatement(
+    override val mnemonic: String?,
+    override val operands: List<String> = listOf(),
+    override val comment: String?
+) :
     Statement(mnemonic = mnemonic, comment = comment)
 
 
