@@ -12,6 +12,7 @@ sealed class Statement(
         INSTRUCTIONS_TABLE
             .asSequence()
             .filter { it.mnemonic == mnemonic }
+            .filter { it.arity == operands.size }
             .map { runCatching { output.put(it.compile(operands)) } }
             .filter { it.isSuccess }
             .find { return }
