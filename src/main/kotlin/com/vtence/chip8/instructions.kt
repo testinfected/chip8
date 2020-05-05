@@ -1,12 +1,19 @@
 package com.vtence.chip8
 
 import com.vtence.chip8.Instruction.Companion.op
-import com.vtence.chip8.Operand.Companion.V
+import com.vtence.chip8.Operand.Companion.B
+import com.vtence.chip8.Operand.Companion.DT
+import com.vtence.chip8.Operand.Companion.F
+import com.vtence.chip8.Operand.Companion.I
+import com.vtence.chip8.Operand.Companion.K
+import com.vtence.chip8.Operand.Companion.ST
+import com.vtence.chip8.Operand.Companion.V0
+import com.vtence.chip8.Operand.Companion.Vx
+import com.vtence.chip8.Operand.Companion.Vy
+import com.vtence.chip8.Operand.Companion.`(I)`
 import com.vtence.chip8.Operand.Companion.addr
 import com.vtence.chip8.Operand.Companion.byte
 import com.vtence.chip8.Operand.Companion.nibble
-import com.vtence.chip8.Operand.Companion.x
-import com.vtence.chip8.Operand.Companion.y
 
 
 private val HEX = Regex("[0-9a-fA-F]")
@@ -34,14 +41,31 @@ sealed class Operand {
     abstract fun replace(opcode: String, value: String): String
 
     companion object {
-        const val x = "x"
-        const val y = "y"
+        val addr = Nibbles("n", 3)
 
-        fun addr() = Nibbles("n", 3)
+        val byte = Nibbles("k", 2)
 
-        fun byte() = Nibbles("k", 2)
+        val nibble = Nibbles("n", 1)
 
-        fun nibble() = Nibbles("n", 1)
+        val B = Literal("B")
+
+        val F = Literal("F")
+
+        val I = Literal("I")
+
+        val K = Literal("K")
+
+        val DT = Literal("DT")
+
+        val ST = Literal("ST")
+
+        val `(I)` = Literal("[I]")
+
+        val V0 = Literal("V0")
+
+        val Vx = V("x")
+
+        val Vy = V("y")
 
         fun V(symbol: String) = Register(symbol)
     }
@@ -75,35 +99,59 @@ class Register(private val symbol: String) : Operand() {
 }
 
 
+class Literal(private val symbol: String): Operand() {
+
+    override fun replace(opcode: String, value: String): String {
+        validate(value)
+        return opcode
+    }
+
+    private fun validate(operand: String) {
+        if (symbol != operand) throw IllegalArgumentException("expected literal $symbol, got $operand")
+    }
+}
+
+
 // See http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#3.1
 
 val INSTRUCTIONS_TABLE = sequenceOf(
     op("000E", "CLS"),
     op("00EE", "RET"),
-    op("0nnn", "SYS", addr()),
-    op("1nnn", "JP", addr()),
-    op("2nnn", "CALL", addr()),
-    op("3xkk", "SE", V(x), byte()),
-    op("4xkk", "SNE", V(x), byte()),
-    op("5xy0", "SE", V(x), V(y)),
-    op("6xkk", "LD", V(x), byte()),
-    op("7xkk", "ADD", V(x), byte()),
-    op("8xy0", "LD", V(x), V(y)),
-    op("8xy1", "OR", V(x), V(y)),
-    op("8xy2", "AND", V(x), V(y)),
-    op("8xy3", "XOR", V(x), V(y)),
-    op("8xy4", "ADD", V(x), V(y)),
-    op("8xy5", "SUB", V(x), V(y)),
+    op("0nnn", "SYS", addr),
+    op("1nnn", "JP", addr),
+    op("2nnn", "CALL", addr),
+    op("3xkk", "SE", Vx, byte),
+    op("4xkk", "SNE", Vx, byte),
+    op("5xy0", "SE", Vx, Vy),
+    op("6xkk", "LD", Vx, byte),
+    op("7xkk", "ADD", Vx, byte),
+    op("8xy0", "LD", Vx, Vy),
+    op("8xy1", "OR", Vx, Vy),
+    op("8xy2", "AND", Vx, Vy),
+    op("8xy3", "XOR", Vx, Vy),
+    op("8xy4", "ADD", Vx, Vy),
+    op("8xy5", "SUB", Vx, Vy),
     // See http://mattmik.com/files/chip8/mastering/chip8.html note on 8xy6
-    op("8xy6", "SHR", V(x), V(y)),
-    op("8xy7", "SUBN", V(x), V(y)),
+    op("8xy6", "SHR", Vx, Vy),
+    op("8xy7", "SUBN", Vx, Vy),
     // See http://mattmik.com/files/chip8/mastering/chip8.html note on 8xyE
-    op("8xyE", "SHL", V(x), V(y)),
-    op("9xy0", "SNE", V(x), V(y)),
-    op("Cxkk", "RND", V(x), byte()),
-    op("Dxyn", "DRW", V(x), V(y), nibble()),
-    op("Ex9E", "SKP", V(x)),
-    op("ExA1", "SKNP", V(x))
+    op("8xyE", "SHL", Vx, Vy),
+    op("9xy0", "SNE", Vx, Vy),
+    op("Annn", "LD", I, addr),
+    op("Bnnn", "JP", V0, addr),
+    op("Cxkk", "RND", Vx, byte),
+    op("Dxyn", "DRW", Vx, Vy, nibble),
+    op("Ex9E", "SKP", Vx),
+    op("ExA1", "SKNP", Vx),
+    op("Fx07","LD", Vx, DT),
+    op("Fx0A", "LD", Vx, K),
+    op("Fx15", "LD", DT, Vx),
+    op("Fx18", "LD", ST, Vx),
+    op("Fx1E", "ADD", I, Vx),
+    op("Fx29" , "LD", F, Vx),
+    op("Fx33" , "LD", B, Vx),
+    op("Fx55" , "LD", `(I)`, Vx),
+    op("Fx65", "LD", Vx, `(I)`)
 )
 
 

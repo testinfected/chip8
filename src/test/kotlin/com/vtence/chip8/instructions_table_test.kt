@@ -28,13 +28,21 @@ class InstructionsTableTest {
         "SUBN V2, V3" to "8237",
         "SHL V8, VE" to "88EE",
         "SNE V3, V1" to "9310",
-        // Annn
-        // Bnnn
+        "LD I, 300" to "A300",
+        "JP V0, 500" to "B500",
         "RND V1, 77" to "C177",
         "DRW V1, V3, 5" to "D135",
         "SKP V2" to "E29E",
-        "SKNP V3" to "E3A1"
-        // F...
+        "SKNP V3" to "E3A1",
+        "LD V1, DT" to "F107",
+        "LD V2, K" to "F20A",
+        "LD DT, V3" to "F315",
+        "LD ST, V4" to "F418",
+        "ADD I, V5" to "F51E",
+        "LD F, V6" to "F629",
+        "LD B, V7" to "F733",
+        "LD [I], V8" to "F855",
+        "LD V9, [I]" to "F965"
     )
 
     @Test
@@ -52,7 +60,9 @@ class InstructionsTableTest {
         "JP 10",
         "CALL V5RF",
         "SE R8, EF",
-        "SE VAB, EF"
+        "SE VAB, EF",
+        "LD J, V2",
+        "LD V1, (I)"
     )
 
     @Test
