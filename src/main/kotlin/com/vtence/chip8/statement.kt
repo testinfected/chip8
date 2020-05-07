@@ -1,19 +1,39 @@
 package com.vtence.chip8
 
-import java.nio.ByteBuffer
+import java.io.ByteArrayOutputStream
+import java.io.OutputStream
 
 
-sealed class Statement(
-    open val mnemonic: String? = null,
-    open val operands: List<String> = listOf(),
-    open val comment: String? = null
-) {
-    fun compileTo(output: ByteBuffer) {
-        INSTRUCTIONS_TABLE
-            .asSequence()
+sealed class Statement {
+    abstract fun assembleTo(output: OutputStream)
+
+}
+
+object BlankStatement : Statement() {
+    override fun assembleTo(output: OutputStream) {
+    }
+
+    override fun toString() = ""
+}
+
+class CommentStatement(private val comment: String) : Statement() {
+    override fun assembleTo(output: OutputStream) {
+    }
+
+    override fun toString() = "; $comment"
+}
+
+class AssemblyStatement(
+    val mnemonic: String,
+    val operands: List<String> = listOf(),
+    val comment: String?
+) : Statement() {
+
+    override fun assembleTo(output: OutputStream) {
+        INSTRUCTIONS_SET
             .filter { it.mnemonic == mnemonic }
             .filter { it.arity == operands.size }
-            .map { runCatching { output.put(it.compile(operands)) } }
+            .map { runCatching { output.write(it.numericRepresentation(operands)) } }
             .filter { it.isSuccess }
             .find { return }
 
@@ -21,33 +41,24 @@ sealed class Statement(
     }
 
     override fun toString() =
-        "$mnemonic${operands.joinToString(", ", prefix = " ")}${comment?.let { " # $it" }.orEmpty()}"
+        "$mnemonic${operands.joinToString(prefix = " ").trimEnd()}${comment?.let { " ; $it" }.orEmpty()}"
 }
 
-object BlankStatement : Statement()
 
-class CommentStatement(override val comment: String) : Statement(comment = comment)
+fun Statement.assemble() = assemble { it }
 
-class AssemblyStatement(
-    override val mnemonic: String,
-    override val operands: List<String> = listOf(),
-    override val comment: String?
-) : Statement(mnemonic = mnemonic, comment = comment)
-
-fun Statement.compile() = compile { it }
-
-fun <T> Statement.compile(to: (bytes: ByteArray) -> T): T {
-    val buffer = ByteArray(2)
-    compileTo(ByteBuffer.wrap(buffer))
-    return to(buffer)
+fun <T> Statement.assemble(format: (bytes: ByteArray) -> T): T {
+    val buffer = ByteArrayOutputStream(2)
+    assembleTo(buffer)
+    return format(buffer.toByteArray())
 }
 
 
 private val BLANK_LINE = Regex("""\s*""")
 
-private val COMMENT_LINE = Regex("""\s*#\s*(?<comment>.*)$""")
+private val COMMENT_LINE = Regex("""\s*;\s*(?<comment>.*)$""")
 
-private val ASM_LINE = Regex("""(?<mnemonic>\w*)(?:\s+(?<operands>[\s\w$,\[\]]*)\s*[#]*\s*(?<comment>.*))?""")
+private val ASM_LINE = Regex("""(?<mnemonic>\w*)(?:\s+(?<operands>[\s\w$,\[\]]*)\s*[;]*\s*(?<comment>.*))?""")
 
 fun parse(lineOfCode: String): Statement {
     BLANK_LINE.matchEntire(lineOfCode)?.let {

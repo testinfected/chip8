@@ -22,7 +22,7 @@ private val HEX = Regex("[0-9a-fA-F]")
 data class Instruction(val opcode: String, val mnemonic: String, val operands: List<Operand>) {
     val arity = operands.size
 
-    fun compile(arguments: Collection<String>): ByteArray {
+    fun numericRepresentation(arguments: Collection<String>): ByteArray {
         if (arity != arguments.size) throw IllegalArgumentException("expected $arity arguments, got ${arguments.size}")
 
         return operands.zip(arguments)
@@ -41,11 +41,11 @@ sealed class Operand {
     abstract fun replace(opcode: String, value: String): String
 
     companion object {
-        val addr = Nibbles("n", 3)
+        val addr = ImmediateValue("n", 3)
 
-        val byte = Nibbles("k", 2)
+        val byte = ImmediateValue("k", 2)
 
-        val nibble = Nibbles("n", 1)
+        val nibble = ImmediateValue("n", 1)
 
         val B = Literal("B")
 
@@ -71,15 +71,15 @@ sealed class Operand {
     }
 }
 
-class Nibbles(private val symbol: String, private val count: Int): Operand() {
+class ImmediateValue(private val symbol: String, private val nibbles: Int): Operand() {
 
     override fun replace(opcode: String, value: String): String {
-        return opcode.replace(Regex("$symbol{$count}"), parse(value))
+        return opcode.replace(Regex("$symbol{$nibbles}"), parse(value).padStart(nibbles, '0'))
     }
 
     private fun parse(operand: String): String {
-        return Regex("$HEX{$count}").matchEntire(operand)?.value
-            ?: throw IllegalArgumentException("expected $count nibble(s), not $operand")
+        return Regex("$HEX{1,$nibbles}").matchEntire(operand)?.value
+            ?: throw IllegalArgumentException("expected $nibbles nibble(s), not $operand")
     }
 }
 
@@ -114,7 +114,7 @@ class Literal(private val symbol: String): Operand() {
 
 // See http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#3.1
 
-val INSTRUCTIONS_TABLE = sequenceOf(
+val INSTRUCTIONS_SET = sequenceOf(
     op("000E", "CLS"),
     op("00EE", "RET"),
     op("0nnn", "SYS", addr),

@@ -5,18 +5,20 @@ import com.natpryce.hamkrest.equalTo
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
-class InstructionsTableTest {
+class InstructionSetTest {
 
     private val validInstructions = listOf(
         "CLS" to "000E",
         "RET" to "00EE",
         "SYS 5AF" to "05AF",
         "JP 200" to "1200",
+        "JP 20" to "1020", // same with less digits
         "CALL A50" to "2A50",
         "SE V8, EF" to "38EF",
         "SNE V5, 8B" to "458B",
         "SE V0, V1" to "5010",
         "LD V3, 5D" to "635D",
+        "ADD V7, 1" to "7701", // with a single digit this time
         "ADD V7, 7A" to "777A",
         "LD V1, V2" to "8120",
         "OR V8, VE" to "88E1",
@@ -49,7 +51,7 @@ class InstructionsTableTest {
     fun `compiles valid statements to binary code`() {
         for ((statement, machineCode) in validInstructions) {
             assertThat(
-                parse(statement).compile { it.toHex(upper = true) },
+                parse(statement).assemble { it.toHex(upper = true) },
                 equalTo(machineCode), { "$statement, once compiled" })
         }
     }
@@ -57,7 +59,7 @@ class InstructionsTableTest {
     private val invalidInstructions = listOf(
         "ABC",
         "CLS 200",
-        "JP 10",
+        "JP 1000",
         "CALL V5RF",
         "SE R8, EF",
         "SE VAB, EF",
@@ -68,7 +70,7 @@ class InstructionsTableTest {
     @Test
     fun `rejects invalid statements`() {
         invalidInstructions.forEach {
-            assertThrows<SyntaxException>(it) { parse(it).compile() }
+            assertThrows<SyntaxException>(it) { parse(it).assemble() }
         }
     }
 }
