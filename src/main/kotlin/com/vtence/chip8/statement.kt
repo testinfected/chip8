@@ -52,7 +52,7 @@ private val BLANK_LINE = Regex("""\s*""")
 
 private val COMMENT_LINE = Regex("""\s*;\s*(?<comment>.*)$""")
 
-private val ASM_LINE = Regex("""(?<mnemonic>\w*)(?:\s+(?<operands>[\s\w$,\[\]]*)\s*[;]*\s*(?<comment>.*))?""")
+private val ASM_LINE = Regex("""(?<mnemonic>\w*)(?:\s+(?<operands>[\s\w$,\[\]]*))?(?:\s+;\s*(?<comment>.*))?""")
 
 fun parse(lineOfCode: String): Statement {
     BLANK_LINE.matchEntire(lineOfCode)?.let {

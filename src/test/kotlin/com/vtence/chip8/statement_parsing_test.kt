@@ -6,6 +6,7 @@ import com.natpryce.hamkrest.isA
 import com.natpryce.hamkrest.isEmptyString
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class StatementParsing {
 
@@ -85,6 +86,11 @@ class StatementParsing {
             }
             else -> invalidTypeOf(statement)
         }
+    }
+
+    @Test
+    fun `invalid statement`() {
+        assertThrows<SyntaxException> { parse("invalid statement ....") }
     }
 
     private fun invalidTypeOf(statement: Statement): Nothing =
