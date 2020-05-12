@@ -51,7 +51,7 @@ class InstructionSetTest {
     fun `compiles valid statements to binary code`() {
         for ((statement, machineCode) in validInstructions) {
             assertThat(
-                parse(statement).assemble { it.toHex(upper = true) },
+                parse(statement).assemble().printAsHex(),
                 equalTo(machineCode), { "$statement, once compiled" })
         }
     }

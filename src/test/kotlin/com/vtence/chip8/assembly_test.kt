@@ -66,7 +66,7 @@ class AssemblyTest {
             ADD V1, 4       ; We update V1. The next line is located 4 pixels doan.
          
             SE  V1, 32      ; Have we drawn all the lines ? If yes, V1==32.
-            JP  204         ; No ? So we continue !        
+            JP  204         ; No ? So we continue !    
         """.trimIndent()
         )
 
@@ -90,6 +90,6 @@ class AssemblyTest {
         )
     }
 
-    private fun hasContent(vararg words: String): Matcher<ByteArray> =
-        has("content", { it.toHex() }, equalTo(words.joinToString("").toLowerCase()))
+    private fun hasContent(vararg words: String): Matcher<Assembly> =
+        has("content", { it.printAsHex(false) }, equalTo(words.joinToString("").toLowerCase()))
 }

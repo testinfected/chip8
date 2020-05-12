@@ -1,23 +1,19 @@
 package com.vtence.chip8
 
-import java.io.ByteArrayOutputStream
-import java.io.OutputStream
-
 
 sealed class Statement {
-    abstract fun assembleTo(output: OutputStream)
-
+    abstract fun writeTo(assembly: Assembly)
 }
 
 object BlankStatement : Statement() {
-    override fun assembleTo(output: OutputStream) {
+    override fun writeTo(assembly: Assembly) {
     }
 
     override fun toString() = ""
 }
 
 class CommentStatement(private val comment: String) : Statement() {
-    override fun assembleTo(output: OutputStream) {
+    override fun writeTo(assembly: Assembly) {
     }
 
     override fun toString() = "; $comment"
@@ -29,11 +25,11 @@ class AssemblyStatement(
     val comment: String?
 ) : Statement() {
 
-    override fun assembleTo(output: OutputStream) {
+    override fun writeTo(assembly: Assembly) {
         INSTRUCTIONS_SET
             .filter { it.mnemonic == mnemonic }
             .filter { it.arity == operands.size }
-            .map { runCatching { output.write(it.numericRepresentation(operands)) } }
+            .map { runCatching { it.write(assembly, assembly.args(operands)) } }
             .filter { it.isSuccess }
             .find { return }
 
@@ -45,12 +41,10 @@ class AssemblyStatement(
 }
 
 
-fun Statement.assemble() = assemble { it }
-
-fun <T> Statement.assemble(format: (bytes: ByteArray) -> T): T {
-    val buffer = ByteArrayOutputStream(2)
-    assembleTo(buffer)
-    return format(buffer.toByteArray())
+fun Statement.assemble() : Assembly {
+    val assembly = Assembly.allocate(2)
+    writeTo(assembly)
+    return assembly
 }
 
 

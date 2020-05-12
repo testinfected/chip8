@@ -16,29 +16,33 @@ import com.vtence.chip8.Operand.Companion.byte
 import com.vtence.chip8.Operand.Companion.nibble
 
 
-private val HEX = Regex("[0-9a-fA-F]")
-
-
-data class Instruction(val opcode: String, val mnemonic: String, val operands: List<Operand>) {
+data class Instruction(val opcode: OpCode, val mnemonic: String, val operands: List<Operand>) {
     val arity = operands.size
 
-    fun numericRepresentation(arguments: Collection<String>): ByteArray {
-        if (arity != arguments.size) throw IllegalArgumentException("expected $arity arguments, got ${arguments.size}")
-
-        return operands.zip(arguments)
-            .fold(opcode) { instruction, (operand, argument) -> operand.replace(instruction, argument) }
-            .toHex()
+    fun write(assembly: Assembly, arguments: Arguments) {
+        assembly.write(
+            operands.fold(opcode) { instruction, operand -> operand.assemble(instruction, arguments) }.toByteArray()
+        )
     }
 
     companion object {
         fun op(opcode: String, mnemonic: String, vararg operands: Operand) =
-            Instruction(opcode, mnemonic, operands.toList())
+            Instruction(OpCode(opcode), mnemonic, operands.toList())
     }
 }
 
 
+class OpCode(private val opcode: String) {
+    fun replace(symbol: String, value: String) = OpCode(opcode.replace(symbol, value))
+
+    fun replace(pattern: Regex, value: String) = OpCode(opcode.replace(pattern, value))
+
+    fun toByteArray() = opcode.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+}
+
+
 sealed class Operand {
-    abstract fun replace(opcode: String, value: String): String
+    abstract fun assemble(opcode: OpCode, args: Arguments): OpCode
 
     companion object {
         val addr = ImmediateValue("n", 3)
@@ -71,43 +75,25 @@ sealed class Operand {
     }
 }
 
-class ImmediateValue(private val symbol: String, private val nibbles: Int): Operand() {
+class ImmediateValue(private val symbol: String, private val nibbles: Int) : Operand() {
 
-    override fun replace(opcode: String, value: String): String {
-        return opcode.replace(Regex("$symbol{$nibbles}"), parse(value).padStart(nibbles, '0'))
-    }
-
-    private fun parse(operand: String): String {
-        return Regex("$HEX{1,$nibbles}").matchEntire(operand)?.value
-            ?: throw IllegalArgumentException("expected $nibbles nibble(s), not $operand")
+    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
+        return opcode.replace(Regex("$symbol{$nibbles}"), args.nibbles(nibbles))
     }
 }
-
 
 class Register(private val symbol: String) : Operand() {
 
-    override fun replace(opcode: String, value: String): String {
-        return opcode.replace(symbol, parse(value))
-    }
-
-    private fun parse(operand: String): String {
-        return Regex("V(?<number>$HEX)").matchEntire(operand)?.let {
-            val (number, _) = it.destructured
-            number
-        } ?: throw IllegalArgumentException("invalid register: $operand")
+    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
+        return opcode.replace(symbol, args.register())
     }
 }
 
+class Literal(private val symbol: String) : Operand() {
 
-class Literal(private val symbol: String): Operand() {
-
-    override fun replace(opcode: String, value: String): String {
-        validate(value)
+    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
+        args.literal(symbol)
         return opcode
-    }
-
-    private fun validate(operand: String) {
-        if (symbol != operand) throw IllegalArgumentException("expected literal $symbol, got $operand")
     }
 }
 
@@ -143,14 +129,14 @@ val INSTRUCTIONS_SET = sequenceOf(
     op("Dxyn", "DRW", Vx, Vy, nibble),
     op("Ex9E", "SKP", Vx),
     op("ExA1", "SKNP", Vx),
-    op("Fx07","LD", Vx, DT),
+    op("Fx07", "LD", Vx, DT),
     op("Fx0A", "LD", Vx, K),
     op("Fx15", "LD", DT, Vx),
     op("Fx18", "LD", ST, Vx),
     op("Fx1E", "ADD", I, Vx),
-    op("Fx29" , "LD", F, Vx),
-    op("Fx33" , "LD", B, Vx),
-    op("Fx55" , "LD", `(I)`, Vx),
+    op("Fx29", "LD", F, Vx),
+    op("Fx33", "LD", B, Vx),
+    op("Fx55", "LD", `(I)`, Vx),
     op("Fx65", "LD", Vx, `(I)`)
 )
 
