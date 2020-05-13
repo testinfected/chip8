@@ -59,8 +59,8 @@ class InstructionSetTest {
     private val invalidInstructions = listOf(
         "ABC",
         "CLS 200",
-        "JP 1000",
-        "CALL V5RF",
+        "JP 100, 200",
+        "CALL",
         "SE R8, EF",
         "SE VAB, EF",
         "LD J, V2",

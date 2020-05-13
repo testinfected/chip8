@@ -45,7 +45,7 @@ sealed class Operand {
     abstract fun assemble(opcode: OpCode, args: Arguments): OpCode
 
     companion object {
-        val addr = ImmediateValue("n", 3)
+        val addr = Address("nnn")
 
         val byte = ImmediateValue("k", 2)
 
@@ -79,6 +79,13 @@ class ImmediateValue(private val symbol: String, private val nibbles: Int) : Ope
 
     override fun assemble(opcode: OpCode, args: Arguments): OpCode {
         return opcode.replace(Regex("$symbol{$nibbles}"), args.nibbles(nibbles))
+    }
+}
+
+class Address(private val symbol: String) : Operand() {
+
+    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
+        return opcode.replace(symbol, args.address())
     }
 }
 

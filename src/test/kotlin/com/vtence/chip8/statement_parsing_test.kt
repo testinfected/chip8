@@ -89,6 +89,32 @@ class StatementParsing {
     }
 
     @Test
+    fun `label definition`() {
+        val statement = parse("LOOP:")
+
+        when (statement) {
+            is LabelDefinition -> {
+                assertThat(statement.label, equalTo("LOOP"))
+                assertThat(statement.toString(), equalTo("LOOP:"))
+            }
+            else -> invalidTypeOf(statement)
+        }
+    }
+
+    @Test
+    fun `label definition with a comment`() {
+        val statement = parse("LOOP: ; label definition")
+
+        when (statement) {
+            is LabelDefinition -> {
+                assertThat(statement.label, equalTo("LOOP"))
+                assertThat(statement.toString(), equalTo("LOOP: ; label definition"))
+            }
+            else -> invalidTypeOf(statement)
+        }
+    }
+
+    @Test
     fun `invalid statement`() {
         assertThrows<SyntaxException> { parse("invalid statement ....") }
     }
