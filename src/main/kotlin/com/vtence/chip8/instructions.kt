@@ -14,6 +14,7 @@ import com.vtence.chip8.Operand.Companion.`(I)`
 import com.vtence.chip8.Operand.Companion.addr
 import com.vtence.chip8.Operand.Companion.byte
 import com.vtence.chip8.Operand.Companion.nibble
+import com.vtence.chip8.Operand.Companion.word
 
 
 data class Instruction(val opcode: OpCode, val mnemonic: String, val operands: List<Operand>) {
@@ -46,6 +47,8 @@ sealed class Operand {
 
     companion object {
         val addr = Address("nnn")
+
+        val word = ImmediateValue("n", 4)
 
         val byte = ImmediateValue("k", 2)
 
@@ -144,7 +147,9 @@ val INSTRUCTIONS_SET = sequenceOf(
     op("Fx29", "LD", F, Vx),
     op("Fx33", "LD", B, Vx),
     op("Fx55", "LD", `(I)`, Vx),
-    op("Fx65", "LD", Vx, `(I)`)
+    op("Fx65", "LD", Vx, `(I)`),
+    op("kk", "BYTE", byte),
+    op("nnnn", "WORD", word)
 )
 
 

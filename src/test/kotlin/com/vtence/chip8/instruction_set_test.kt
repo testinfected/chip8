@@ -52,7 +52,23 @@ class InstructionSetTest {
         for ((statement, machineCode) in validInstructions) {
             assertThat(
                 parse(statement).assemble().printAsHex(),
-                equalTo(machineCode), { "$statement, once compiled" })
+                equalTo(machineCode), { "assembly of $statement" })
+        }
+    }
+
+    private val pseudoInstructions = listOf(
+        "BYTE FE" to "FE",                  // byte literal
+        "BYTE .1..1..." to "48",            // bits literal
+        "WORD FE13" to "FE13",              // word literal
+        "WORD .1..1....1..1..." to "4848"   // bits literal
+    )
+
+    @Test
+    fun `understands pseudo instructions beyond instructions`() {
+        for ((statement, machineCode) in pseudoInstructions) {
+            assertThat(
+                parse(statement).assemble().printAsHex(),
+                equalTo(machineCode), { "assembly of $statement" })
         }
     }
 

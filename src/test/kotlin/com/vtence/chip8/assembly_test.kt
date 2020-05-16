@@ -68,11 +68,17 @@ class AssemblyTest {
                 SE  V1, 32      ; Have we drawn all the lines? If yes, V1==32.
                 JP  LOOP        ; No? So we continue! 
                    
-           LEFT: ; 0x21C
-           ;....
-           
-           RIGHT: ; 0x21C
-           ;....
+            LEFT:               ; 4*4 bitmap of the left line
+                BYTE 1.......
+                BYTE .1......
+                BYTE ..1.....
+                BYTE ...1....
+ 
+            RIGHT:                ; 4*4 bitmap of the right line
+                BYTE ..1.....
+                BYTE .1......
+                BYTE 1.......
+                BYTE ...1....
         """.trimIndent()
         )
 
@@ -85,7 +91,7 @@ class AssemblyTest {
                 "A21C",
                 "C201",
                 "3201",
-                "A21C",
+                "A220",
                 "D014",
                 "7004",
                 "3064",
@@ -93,7 +99,11 @@ class AssemblyTest {
                 "6000",
                 "7104",
                 "3132",
-                "1204"
+                "1204",
+                "8040",
+                "2010",
+                "2040",
+                "8010"
             )
         )
     }

@@ -116,7 +116,7 @@ class StatementParsing {
 
     @Test
     fun `invalid statement`() {
-        assertThrows<SyntaxException> { parse("invalid statement ....") }
+        assertThrows<SyntaxException> { parse("invalid statement !@#$!@#") }
     }
 
     private fun invalidTypeOf(statement: Statement): Nothing =

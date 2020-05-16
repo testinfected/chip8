@@ -117,21 +117,27 @@ class Arguments(
     }
 
     fun address(): String {
-        return next().let {
+        next().let {
             Regex("$HEX{1,3}").matchEntire(it)?.value?.let { address ->
                 return address.padStart(3, '0')
             }
 
             if (it in symbolTable) return symbolTable[it].toString(16)
 
-            symbolTable.unresolved(offset, it)
+            return symbolTable.unresolved(offset, it)
         }
     }
 
     fun nibbles(count: Int): String {
-        return next().let {
-            Regex("$HEX{1,$count}").matchEntire(it)?.value?.padStart(count, '0')
-                ?: throw IllegalArgumentException("expected $count nibble(s), not $it")
+        next().let {
+            Regex("$HEX{1,$count}").matchEntire(it)?.value?.let { hex ->
+                return hex.padStart(count, '0')
+            }
+            Regex("$BIT{${count.times(4)}}").matchEntire(it)?.value?.let { bits ->
+                return bits.replace(".", "0").toInt(radix = 2).toString(16)
+            }
+
+            throw IllegalArgumentException("expected $count nibble(s), not $it")
         }
     }
 
@@ -139,6 +145,7 @@ class Arguments(
 
     companion object {
         private val HEX = Regex("[0-9a-fA-F]")
+        private val BIT = Regex("[0.1]")
 
         operator fun invoke(args: List<String>, address: Int, symbolTable: SymbolTable) =
             Arguments(args.iterator(), address, symbolTable)
