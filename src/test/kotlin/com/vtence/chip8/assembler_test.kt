@@ -6,13 +6,13 @@ import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.has
 import org.junit.jupiter.api.Test
 
-class AssemblyTest {
+class AssemblerTest {
 
     @Test
     fun `an empty program`() {
         val program = Program.source("""""")
 
-        val machineCode = program.assemble()
+        val machineCode = Assembler.assemble(program)
 
         assertThat(machineCode, hasContent(""))
     }
@@ -25,7 +25,7 @@ class AssemblyTest {
         """.trimIndent()
         )
 
-        val machineCode = program.assemble()
+        val machineCode = Assembler.assemble(program)
 
         assertThat(machineCode, hasContent("1200"))
     }
@@ -59,7 +59,7 @@ class AssemblyTest {
                 SE  V0, 64      ; If V0==64, we finished drawing a complete line, so we
                                 ; skip the jump to LOOP, as we have to update V1 too.
              
-                JP  204         ; We did not draw a complete line? So we continue!
+                JP  LOOP        ; We did not draw a complete line? So we continue!
              
                 LD  V0, 0       ; The first bitmap of each line is located 0, V1.
              
@@ -82,7 +82,7 @@ class AssemblyTest {
         """.trimIndent()
         )
 
-        val machineCode = program.assemble()
+        val machineCode = Assembler.assemble(program)
 
         assertThat(
             machineCode, hasContent(

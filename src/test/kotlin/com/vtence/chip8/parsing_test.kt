@@ -8,13 +8,13 @@ import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
-class StatementParsing {
+class ParsingTest {
 
     @Test
     fun `blank statement`() {
         val statement = parse("")
 
-        assertThat(statement, isA<BlankStatement>())
+        assertThat(statement, isA<BlankLine>())
         assertThat(statement.toString(), isEmptyString)
     }
 
@@ -22,14 +22,14 @@ class StatementParsing {
     fun `comment statement`() {
         val statement = parse("; a comment line that contains nothing")
 
-        assertThat(statement, isA<CommentStatement>())
+        assertThat(statement, isA<Comment>())
         assertThat(statement.toString(), equalTo("; a comment line that contains nothing"))
     }
 
     @Test
     fun `simplest assembly statement, using only a mnemonic`() {
         when (val statement = parse("CLS")) {
-            is AssemblyStatement -> {
+            is AssemblyCode -> {
                 assertThat(statement.mnemonic, equalTo("CLS"))
                 assertThat(statement.toString(), equalTo("CLS"))
             }
@@ -40,7 +40,7 @@ class StatementParsing {
     @Test
     fun `assembly statement followed by a comment`() {
         when (val statement = parse("CLS ; clear screen")) {
-            is AssemblyStatement -> {
+            is AssemblyCode -> {
                 assertThat(statement.mnemonic, equalTo("CLS"))
                 assertThat(statement.comment, equalTo("clear screen"))
                 assertThat(statement.toString(), equalTo("CLS ; clear screen"))
@@ -52,7 +52,7 @@ class StatementParsing {
     @Test
     fun `assembly statement with a single operand`() {
         when (val statement = parse("CALL 200")) {
-            is AssemblyStatement -> {
+            is AssemblyCode -> {
                 assertThat(statement.mnemonic, equalTo("CALL"))
                 assertThat(statement.operands, equalTo(listOf("200")))
                 assertThat(statement.toString(), equalTo("CALL 200"))
@@ -64,7 +64,7 @@ class StatementParsing {
     @Test
     fun `assembly statement with two operands`() {
         when (val statement = parse("ADD V1, 10")) {
-            is AssemblyStatement -> {
+            is AssemblyCode -> {
                 assertThat(statement.mnemonic, equalTo("ADD"))
                 assertThat(statement.operands, equalTo(listOf("V1", "10")))
                 assertThat(statement.toString(), equalTo("ADD V1, 10"))
@@ -78,7 +78,7 @@ class StatementParsing {
         val statement = parse("ADD V1, 10 ; add 10h to register V1")
 
         when (statement) {
-            is AssemblyStatement -> {
+            is AssemblyCode -> {
                 assertThat(statement.mnemonic, equalTo("ADD"))
                 assertThat(statement.operands, equalTo(listOf("V1", "10")))
                 assertThat(statement.comment, equalTo("add 10h to register V1"))

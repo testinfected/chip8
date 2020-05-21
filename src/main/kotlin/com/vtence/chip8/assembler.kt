@@ -1,22 +1,37 @@
 package com.vtence.chip8
 
-import java.io.Reader
-import java.io.StringReader
 import java.nio.ByteBuffer
 
-class Program(private val statements: List<Statement>) {
 
-    fun assemble(): Assembly {
+object Assembler {
+
+    fun assemble(program: Program): Assembly {
         val assembly = Assembly.allocate(0x1000, base = 0x200)
-        statements.forEach { it.writeTo(assembly) }
-        assembly.resolve()
+        assemble(program, into = assembly)
+        assembly.resolveSymbols()
         return assembly
     }
 
-    companion object {
-        fun read(source: Reader) = Program(source.readLines().map { parse(it) })
+    private fun assemble(program: Program, into: Assembly) {
+        program.forEach { statement ->
+            when (statement) {
+                is AssemblyCode -> assemble(statement, into)
+                is LabelDefinition -> into.mark(statement.label)
+                is Comment -> {}
+                BlankLine -> {}
+            }
+        }
+    }
 
-        fun source(assemblyCode: String): Program = read(StringReader(assemblyCode))
+    private fun assemble(code: AssemblyCode, into: Assembly) {
+        val opCode = InstructionsTable
+            .list(code.mnemonic, arity = code.operands.size)
+            .map { runCatching { it.assemble(into.args(code.operands)) } }
+            .flatMap { it.asSequence() }
+            .firstOrNull()
+            ?: throw SyntaxException(code.toString())
+
+        into.write(opCode.bytes())
     }
 }
 
@@ -43,7 +58,14 @@ class SymbolTable(private val defaultAddress: Int) {
     fun resolve(action: (Pair<Int, Int>) -> Unit) {
         unresolved
             .map { (address, symbol) -> address to get(symbol) }
-            .forEach(action)
+            .forEach {
+                action(it)
+                markResolved(it.first)
+            }
+    }
+
+    private fun markResolved(address: Int) {
+        unresolved.remove(address)
     }
 }
 
@@ -57,11 +79,6 @@ class Assembly(private val rom: ByteBuffer, private val start: Int = 0) {
 
     fun write(machineCode: ByteArray) {
         rom.put(machineCode)
-    }
-
-    operator fun set(index: Int, word: Word) {
-        rom.put(index, word.msb)
-        rom.put(index + 1, word.lsb)
     }
 
     fun toByteArray(): ByteArray {
@@ -78,10 +95,15 @@ class Assembly(private val rom: ByteBuffer, private val start: Int = 0) {
 
     fun args(operands: List<String>) = Arguments(operands, rom.position(), symbolTable)
 
-    fun resolve() {
+    fun resolveSymbols() {
         symbolTable.resolve { (offset: Int, address: Int) ->
             this[offset] = Word(rom.get(offset).high or address.msb.low, address.lsb)
         }
+    }
+
+    private operator fun set(index: Int, word: Word) {
+        rom.put(index, word.msb)
+        rom.put(index + 1, word.lsb)
     }
 
     companion object {
@@ -151,3 +173,6 @@ class Arguments(
             Arguments(args.iterator(), address, symbolTable)
     }
 }
+
+
+private fun <T> Result<T>.asSequence() = fold(onSuccess = { sequenceOf(it) }, onFailure = { sequenceOf() })
