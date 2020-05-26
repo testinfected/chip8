@@ -10,7 +10,7 @@ class AssemblerTest {
 
     @Test
     fun `an empty program`() {
-        val program = Program.source("""""")
+        val program = Program.fromSource("""""")
 
         val machineCode = Assembler.assemble(program)
 
@@ -18,8 +18,8 @@ class AssemblerTest {
     }
 
     @Test
-    fun `a very dumb program`() {
-        val program = Program.source(
+    fun `a single instruction`() {
+        val program = Program.fromSource(
             """
             JP 200
         """.trimIndent()
@@ -32,7 +32,7 @@ class AssemblerTest {
 
     @Test
     fun `an extract of the maze program`() {
-        val program = Program.source(
+        val program = Program.fromSource(
             """
                 LD  V0, 0
                 LD  V1, 0

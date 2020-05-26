@@ -11,7 +11,7 @@ class Program(private val statements: List<Statement>): Sequence<Statement> {
     companion object {
         fun read(source: Reader) = Program(source.readLines().map { parse(it) })
 
-        fun source(assemblyCode: String): Program = read(StringReader(assemblyCode))
+        fun fromSource(assemblyCode: String): Program = read(StringReader(assemblyCode))
     }
 }
 

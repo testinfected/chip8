@@ -51,7 +51,7 @@ class InstructionSetTest {
     fun `compiles valid statements to binary code`() {
         for ((statement, machineCode) in validInstructions) {
             assertThat(
-                assemble(statement),
+                assemble(statement).printAsHex(),
                 equalTo(machineCode), { "assembly of $statement" })
         }
     }
@@ -67,7 +67,7 @@ class InstructionSetTest {
     fun `understands pseudo instructions beyond instructions`() {
         for ((statement, machineCode) in pseudoInstructions) {
             assertThat(
-                assemble(statement),
+                assemble(statement).printAsHex(),
                 equalTo(machineCode), { "assembly of $statement" })
         }
     }
@@ -89,6 +89,4 @@ class InstructionSetTest {
             assertThrows<SyntaxException>(it) { assemble(it) }
         }
     }
-
-    fun assemble(sourceCode: String) = Assembler.assemble(Program.source(sourceCode)).printAsHex()
 }

@@ -17,11 +17,11 @@ import com.vtence.chip8.Operand.Companion.nibble
 import com.vtence.chip8.Operand.Companion.word
 
 
-class Instruction(val opcode: OpCode, val mnemonic: String, val operands: List<Operand>) {
+class Instruction(private val opcode: OpCode, val mnemonic: String, private val operands: List<Operand>) {
     val arity = operands.size
 
     fun assemble(arguments: Arguments): OpCode {
-        return operands.fold(opcode) { opCode, operand -> operand.assemble(opCode, arguments) }
+        return operands.fold(opcode) { opCode, operand -> operand.encode(opCode, arguments) }
     }
 
     companion object {
@@ -41,7 +41,7 @@ class OpCode(private val opcode: String) {
 
 
 sealed class Operand {
-    abstract fun assemble(opcode: OpCode, args: Arguments): OpCode
+    abstract fun encode(opcode: OpCode, args: Arguments): OpCode
 
     companion object {
         val addr = Address("nnn")
@@ -78,28 +78,28 @@ sealed class Operand {
 
 class ImmediateValue(private val symbol: String, private val nibbles: Int) : Operand() {
 
-    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
+    override fun encode(opcode: OpCode, args: Arguments): OpCode {
         return opcode.resolve(Regex("$symbol{$nibbles}"), args.nibbles(nibbles))
     }
 }
 
 class Address(private val symbol: String) : Operand() {
 
-    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
+    override fun encode(opcode: OpCode, args: Arguments): OpCode {
         return opcode.resolve(symbol, args.address())
     }
 }
 
 class Register(private val symbol: String) : Operand() {
 
-    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
+    override fun encode(opcode: OpCode, args: Arguments): OpCode {
         return opcode.resolve(symbol, args.register())
     }
 }
 
 class Literal(private val symbol: String) : Operand() {
 
-    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
+    override fun encode(opcode: OpCode, args: Arguments): OpCode {
         args.literal(symbol)
         return opcode
     }

@@ -5,10 +5,14 @@ import java.nio.ByteBuffer
 
 object Assembler {
 
+    private const val base = 0x200
+
+    private val symbolTable = SymbolTable(base)
+
     fun assemble(program: Program): Assembly {
-        val assembly = Assembly.allocate(0x1000, base = 0x200)
+        val assembly = Assembly.allocate(0x1000, base = base)
         assemble(program, into = assembly)
-        assembly.resolveSymbols()
+        resolveSymbols(assembly)
         return assembly
     }
 
@@ -16,24 +20,36 @@ object Assembler {
         program.forEach { statement ->
             when (statement) {
                 is AssemblyCode -> assemble(statement, into)
-                is LabelDefinition -> into.mark(statement.label)
+                is LabelDefinition -> defineLabel(statement, into)
                 is Comment -> {}
                 BlankLine -> {}
             }
         }
     }
 
+    private fun resolveSymbols(assembly: Assembly) {
+        symbolTable.resolve { (offset: Int, address: Int) ->
+            assembly[offset] = Word(assembly[offset].high or address.msb.low, address.lsb)
+        }
+    }
+
     private fun assemble(code: AssemblyCode, into: Assembly) {
         val opCode = InstructionsTable
             .list(code.mnemonic, arity = code.operands.size)
-            .map { runCatching { it.assemble(into.args(code.operands)) } }
+            .map { runCatching { it.assemble(Arguments(code.operands, into.position, symbolTable)) } }
             .flatMap { it.asSequence() }
             .firstOrNull()
             ?: throw SyntaxException(code.toString())
 
         into.write(opCode.bytes())
     }
+
+    private fun defineLabel(statement: LabelDefinition, into: Assembly) {
+        symbolTable[statement.label] = into.position
+    }
 }
+
+fun assemble(sourceCode: String) = Assembler.assemble(Program.fromSource(sourceCode))
 
 
 class SymbolTable(private val defaultAddress: Int) {
@@ -71,11 +87,12 @@ class SymbolTable(private val defaultAddress: Int) {
 
 
 class Assembly(private val rom: ByteBuffer, private val start: Int = 0) {
-    private val symbolTable = SymbolTable(0x200)
-
     init {
         rom.position(start)
     }
+
+    val position: Int
+        get() = rom.position()
 
     fun write(machineCode: ByteArray) {
         rom.put(machineCode)
@@ -89,21 +106,15 @@ class Assembly(private val rom: ByteBuffer, private val start: Int = 0) {
         return bytes
     }
 
-    fun mark(label: String) {
-        symbolTable[label] = rom.position()
+    operator fun set(index: Int, word: Word) {
+        this[index] = word.msb
+        this[index + 1] = word.lsb
     }
 
-    fun args(operands: List<String>) = Arguments(operands, rom.position(), symbolTable)
+    operator fun get(index: Int): Byte = rom.get(index)
 
-    fun resolveSymbols() {
-        symbolTable.resolve { (offset: Int, address: Int) ->
-            this[offset] = Word(rom.get(offset).high or address.msb.low, address.lsb)
-        }
-    }
-
-    private operator fun set(index: Int, word: Word) {
-        rom.put(index, word.msb)
-        rom.put(index + 1, word.lsb)
+    operator fun set(index: Int, byte: Byte) {
+        rom.put(index, byte)
     }
 
     companion object {
