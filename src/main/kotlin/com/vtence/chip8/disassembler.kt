@@ -1,7 +1,7 @@
 package com.vtence.chip8
 
 object Disassembler {
-    fun disassemble(assembly: Assembly): Program {
+    fun disassemble(rom: ByteArray): Program {
         return Program(listOf())
     }
 }

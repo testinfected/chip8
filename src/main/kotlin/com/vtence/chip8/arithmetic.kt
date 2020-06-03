@@ -1,16 +1,19 @@
 package com.vtence.chip8
 
 
-typealias Word = Pair<Byte, Byte>
+data class Word(val msb: Byte, val lsb: Byte) {
 
-val Word.msb: Byte
-        get() = this.first
+    override fun toString(): String {
+        return String.format("%02X%02X", msb, lsb)
+    }
 
-val Word.lsb: Byte
-        get() = this.second
+    companion object {
+        operator fun invoke(word: Int) = Word((word ushr 8 and 0xFF).toByte(), (word and 0xFF).toByte())
+     }
+}
 
 
-fun Int.toWord() = Word((this ushr 8 and 0xFF).toByte(), (this and 0xFF).toByte())
+fun Int.toWord() = Word(this)
 
 val Int.msb: Byte
     get() = toWord().msb

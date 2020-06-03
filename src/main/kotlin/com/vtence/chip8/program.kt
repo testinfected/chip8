@@ -6,9 +6,14 @@ import java.io.StringReader
 
 class Program(private val statements: List<Statement>): Sequence<Statement> {
 
+    val lines: List<String>
+        get() = map { it.toString() }.toList()
+
     override fun iterator() = statements.iterator()
 
     companion object {
+        operator fun invoke(statements: Statement) = Program(listOf(statements))
+
         fun read(source: Reader) = Program(source.readLines().map { parse(it) })
 
         fun fromSource(assemblyCode: String): Program = read(StringReader(assemblyCode))
@@ -33,7 +38,7 @@ class LabelDefinition(val label: String, val comment: String?) : Statement() {
 class AssemblyCode(
     val mnemonic: String,
     val operands: List<String> = listOf(),
-    val comment: String?
+    val comment: String? = null
 ) : Statement() {
 
     override fun toString() =

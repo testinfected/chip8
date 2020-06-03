@@ -20,8 +20,8 @@ import com.vtence.chip8.Operand.Companion.word
 class Instruction(private val opcode: OpCode, val mnemonic: String, private val operands: List<Operand>) {
     val arity = operands.size
 
-    fun assemble(arguments: Arguments): OpCode {
-        return operands.fold(opcode) { opCode, operand -> operand.encode(opCode, arguments) }
+    fun assemble(arguments: Arguments): ByteArray {
+        return operands.fold(opcode) { opCode, operand -> operand.assemble(opCode, arguments) }.bytes()
     }
 
     companion object {
@@ -31,17 +31,17 @@ class Instruction(private val opcode: OpCode, val mnemonic: String, private val 
 }
 
 
-class OpCode(private val opcode: String) {
-    fun resolve(symbol: String, value: String) = OpCode(opcode.replace(symbol, value))
+class OpCode(private val code: String) {
+    fun encode(symbol: String, value: String) = OpCode(code.replace(symbol, value))
 
-    fun resolve(pattern: Regex, value: String) = OpCode(opcode.replace(pattern, value))
+    fun encode(pattern: Regex, value: String) = OpCode(code.replace(pattern, value))
 
-    fun bytes() = opcode.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+    fun bytes() = code.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 }
 
 
 sealed class Operand {
-    abstract fun encode(opcode: OpCode, args: Arguments): OpCode
+    abstract fun assemble(opcode: OpCode, args: Arguments): OpCode
 
     companion object {
         val addr = Address("nnn")
@@ -78,28 +78,28 @@ sealed class Operand {
 
 class ImmediateValue(private val symbol: String, private val nibbles: Int) : Operand() {
 
-    override fun encode(opcode: OpCode, args: Arguments): OpCode {
-        return opcode.resolve(Regex("$symbol{$nibbles}"), args.nibbles(nibbles))
+    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
+        return opcode.encode(Regex("$symbol{$nibbles}"), args.nibbles(nibbles))
     }
 }
 
 class Address(private val symbol: String) : Operand() {
 
-    override fun encode(opcode: OpCode, args: Arguments): OpCode {
-        return opcode.resolve(symbol, args.address())
+    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
+        return opcode.encode(symbol, args.address())
     }
 }
 
 class Register(private val symbol: String) : Operand() {
 
-    override fun encode(opcode: OpCode, args: Arguments): OpCode {
-        return opcode.resolve(symbol, args.register())
+    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
+        return opcode.encode(symbol, args.register())
     }
 }
 
 class Literal(private val symbol: String) : Operand() {
 
-    override fun encode(opcode: OpCode, args: Arguments): OpCode {
+    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
         args.literal(symbol)
         return opcode
     }
@@ -113,12 +113,11 @@ object InstructionsTable {
     }
 
     fun list(mnemonic: String): Sequence<Instruction> {
-        return INSTRUCTIONS_SET
-            .filter { it.mnemonic == mnemonic }
+        return instructionSet.filter { it.mnemonic == mnemonic }
     }
 
     // See http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#3.1
-    private val INSTRUCTIONS_SET = sequenceOf(
+    private val instructionSet = sequenceOf(
         op("000E", "CLS"),
         op("00EE", "RET"),
         op("0nnn", "SYS", addr),

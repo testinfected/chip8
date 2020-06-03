@@ -34,14 +34,14 @@ object Assembler {
     }
 
     private fun assemble(code: AssemblyCode, into: Assembly) {
-        val opCode = InstructionsTable
+        val bytes = InstructionsTable
             .list(code.mnemonic, arity = code.operands.size)
             .map { runCatching { it.assemble(Arguments(code.operands, into.position, symbolTable)) } }
             .flatMap { it.asSequence() }
             .firstOrNull()
             ?: throw SyntaxException(code.toString())
 
-        into.write(opCode.bytes())
+        into.write(bytes)
     }
 
     private fun defineLabel(statement: LabelDefinition, into: Assembly) {
@@ -98,14 +98,6 @@ class Assembly(private val rom: ByteBuffer, private val start: Int = 0) {
         rom.put(machineCode)
     }
 
-    fun toByteArray(): ByteArray {
-        rom.flip()
-        rom.position(start)
-        val bytes = ByteArray(rom.remaining())
-        rom.get(bytes)
-        return bytes
-    }
-
     operator fun set(index: Int, word: Word) {
         this[index] = word.msb
         this[index + 1] = word.lsb
@@ -117,13 +109,21 @@ class Assembly(private val rom: ByteBuffer, private val start: Int = 0) {
         rom.put(index, byte)
     }
 
+    fun rom(): ByteArray {
+        rom.flip()
+        rom.position(start)
+        val bytes = ByteArray(rom.remaining())
+        rom.get(bytes)
+        return bytes
+    }
+
     companion object {
         fun allocate(size: Int, base: Int) = Assembly(ByteBuffer.allocate(size), base)
     }
 }
 
-fun Assembly.printAsHex(upperCase: Boolean = true): String {
-    return toByteArray().joinToString("") {
+fun print(assembly: Assembly, upperCase: Boolean = true): String {
+    return assembly.rom().joinToString("") {
         "%02x".format(it).let { hex -> if (upperCase) hex.toUpperCase() else hex }
     }
 }

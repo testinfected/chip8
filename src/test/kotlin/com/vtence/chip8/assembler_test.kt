@@ -109,5 +109,5 @@ class AssemblerTest {
     }
 
     private fun hasContent(vararg words: String): Matcher<Assembly> =
-        has("content", { it.printAsHex(false) }, equalTo(words.joinToString("").toLowerCase()))
+        has("content", { print(it) }, equalTo(words.joinToString("")))
 }
