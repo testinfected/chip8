@@ -15,14 +15,21 @@ import com.vtence.chip8.Operand.Companion.addr
 import com.vtence.chip8.Operand.Companion.byte
 import com.vtence.chip8.Operand.Companion.nibble
 import com.vtence.chip8.Operand.Companion.word
+import java.lang.IllegalArgumentException
 
 
 class Instruction(private val opcode: OpCode, val mnemonic: String, private val operands: List<Operand>) {
     val arity = operands.size
 
-    fun assemble(arguments: Arguments): ByteArray {
-        return operands.fold(opcode) { opCode, operand -> operand.assemble(opCode, arguments) }.bytes()
+    fun assemble(arguments: Arguments): OpCode {
+        return operands.fold(opcode) { instruction, each -> each.assemble(instruction, arguments) }
     }
+
+    fun disassemble(code: OpCode, arguments: Arguments): Arguments {
+       return operands.fold(arguments) { args, each -> each.disassemble(code, args, opcode) }
+    }
+
+    fun matches(other: OpCode) = opcode.matches(other)
 
     companion object {
         fun op(opcode: String, mnemonic: String, vararg operands: Operand) =
@@ -32,16 +39,36 @@ class Instruction(private val opcode: OpCode, val mnemonic: String, private val 
 
 
 class OpCode(private val code: String) {
+    private val pattern = Regex(code.replace(Regex("[n]"), "[0-F]"))
+
     fun encode(symbol: String, value: String) = OpCode(code.replace(symbol, value))
 
-    fun encode(pattern: Regex, value: String) = OpCode(code.replace(pattern, value))
+    fun encode(symbol: Regex, value: String) = OpCode(code.replace(symbol, value))
 
-    fun bytes() = code.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+    fun decode(symbol: String, value: OpCode) = decode(Regex(symbol), value)
+
+    fun decode(symbol: Regex, value: OpCode): String {
+        return symbol.find(code)?.let {
+            value.code.substring(it.range)
+        } ?: throw IllegalArgumentException("$symbol not found in $code")
+    }
+
+    fun matches(other: OpCode) = pattern.matches(other.code)
+
+    override fun toString() = code
+
+    fun toByteArray() = code.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+
+    companion object {
+        operator fun invoke(code: Word) = OpCode(code.toString())
+    }
 }
 
 
 sealed class Operand {
     abstract fun assemble(opcode: OpCode, args: Arguments): OpCode
+
+    abstract fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments
 
     companion object {
         val addr = Address("nnn")
@@ -81,12 +108,21 @@ class ImmediateValue(private val symbol: String, private val nibbles: Int) : Ope
     override fun assemble(opcode: OpCode, args: Arguments): OpCode {
         return opcode.encode(Regex("$symbol{$nibbles}"), args.nibbles(nibbles))
     }
+
+    override fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments {
+        TODO("Not yet implemented")
+    }
+
 }
 
 class Address(private val symbol: String) : Operand() {
 
     override fun assemble(opcode: OpCode, args: Arguments): OpCode {
         return opcode.encode(symbol, args.address())
+    }
+
+    override fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments {
+        return args.addAddress(opcode.decode(symbol, instruction))
     }
 }
 
@@ -95,6 +131,11 @@ class Register(private val symbol: String) : Operand() {
     override fun assemble(opcode: OpCode, args: Arguments): OpCode {
         return opcode.encode(symbol, args.register())
     }
+
+    override fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments {
+        TODO("Not yet implemented")
+    }
+
 }
 
 class Literal(private val symbol: String) : Operand() {
@@ -102,6 +143,10 @@ class Literal(private val symbol: String) : Operand() {
     override fun assemble(opcode: OpCode, args: Arguments): OpCode {
         args.literal(symbol)
         return opcode
+    }
+
+    override fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments {
+        TODO("Not yet implemented")
     }
 }
 
@@ -114,6 +159,10 @@ object InstructionsTable {
 
     fun list(mnemonic: String): Sequence<Instruction> {
         return instructionSet.filter { it.mnemonic == mnemonic }
+    }
+
+    fun lookup(opcode: OpCode): Instruction {
+        return instructionSet.first { it.matches(opcode) }
     }
 
     // See http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#3.1

@@ -6,7 +6,6 @@ import java.nio.ByteBuffer
 object Assembler {
 
     private const val base = 0x200
-
     private val symbolTable = SymbolTable(base)
 
     fun assemble(program: Program): Assembly {
@@ -34,14 +33,14 @@ object Assembler {
     }
 
     private fun assemble(code: AssemblyCode, into: Assembly) {
-        val bytes = InstructionsTable
+        val opcode = InstructionsTable
             .list(code.mnemonic, arity = code.operands.size)
             .map { runCatching { it.assemble(Arguments(code.operands, into.position, symbolTable)) } }
             .flatMap { it.asSequence() }
             .firstOrNull()
             ?: throw SyntaxException(code.toString())
 
-        into.write(bytes)
+        into.write(opcode)
     }
 
     private fun defineLabel(statement: LabelDefinition, into: Assembly) {
@@ -86,22 +85,21 @@ class SymbolTable(private val defaultAddress: Int) {
 }
 
 
-class Assembly(private val rom: ByteBuffer, private val start: Int = 0) {
+class Assembly(private val rom: ByteBuffer, private val base: Int) {
     init {
-        rom.position(start)
+        rom.position(base)
     }
 
     val position: Int
         get() = rom.position()
 
-    fun write(machineCode: ByteArray) {
-        rom.put(machineCode)
+    fun write(opcode: OpCode) {
+        rom.put(opcode.toByteArray())
     }
 
-    operator fun set(index: Int, word: Word) {
-        this[index] = word.msb
-        this[index + 1] = word.lsb
-    }
+    fun hasRemaining() = rom.hasRemaining()
+
+    fun read() = OpCode(Word(rom.get(), rom.get()))
 
     operator fun get(index: Int): Byte = rom.get(index)
 
@@ -109,9 +107,14 @@ class Assembly(private val rom: ByteBuffer, private val start: Int = 0) {
         rom.put(index, byte)
     }
 
+    operator fun set(index: Int, word: Word) {
+        this[index] = word.msb
+        this[index + 1] = word.lsb
+    }
+
     fun rom(): ByteArray {
         rom.flip()
-        rom.position(start)
+        rom.position(base)
         val bytes = ByteArray(rom.remaining())
         rom.get(bytes)
         return bytes
@@ -119,6 +122,13 @@ class Assembly(private val rom: ByteBuffer, private val start: Int = 0) {
 
     companion object {
         fun allocate(size: Int, base: Int) = Assembly(ByteBuffer.allocate(size), base)
+
+        fun load(rom: ByteArray, base: Int): Assembly {
+            val buffer = ByteBuffer.allocate(base + rom.size)
+            buffer.position(base)
+            buffer.put(rom)
+            return Assembly(buffer, base)
+        }
     }
 }
 
@@ -135,13 +145,13 @@ class Arguments(
     private val symbolTable: SymbolTable
 ) {
     fun literal(symbol: String): String {
-        return next().let {
+        return args.next().let {
             if (symbol == it) symbol else throw IllegalArgumentException("expected literal `$symbol`, not: $it")
         }
     }
 
     fun register(): String {
-        return next().let {
+        return args.next().let {
             Regex("V(?<number>$HEX)").matchEntire(it)?.let { match ->
                 val (number, _) = match.destructured
                 number
@@ -150,7 +160,7 @@ class Arguments(
     }
 
     fun address(): String {
-        next().let {
+        args.next().let {
             Regex("$HEX{1,3}").matchEntire(it)?.value?.let { address ->
                 return address.padStart(3, '0')
             }
@@ -162,7 +172,7 @@ class Arguments(
     }
 
     fun nibbles(count: Int): String {
-        next().let {
+        args.next().let {
             Regex("$HEX{1,$count}").matchEntire(it)?.value?.let { hex ->
                 return hex.padStart(count, '0')
             }
@@ -174,7 +184,11 @@ class Arguments(
         }
     }
 
-    private fun next() = args.next()
+    fun addAddress(address: String): Arguments {
+        return Arguments(toList() + address, offset, symbolTable)
+    }
+
+    fun toList() = args.asSequence().toList()
 
     companion object {
         private val HEX = Regex("[0-9a-fA-F]")
