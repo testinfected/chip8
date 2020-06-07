@@ -3,7 +3,7 @@ package com.vtence.chip8
 
 data class Word(val msb: Byte, val lsb: Byte) {
 
-    fun toHex() = msb.toHex() + lsb.toHex()
+    fun toHex(upperCase: Boolean = false) = msb.toHex(upperCase) + lsb.toHex(upperCase)
 
     companion object {
         operator fun invoke(word: Int) = Word((word ushr 8 and 0xFF).toByte(), (word and 0xFF).toByte())
@@ -27,7 +27,7 @@ val Byte.high: Byte
 val Byte.low: Byte
     get() = this and 0xF
 
-fun Byte.toHex() = String.format("%02x", this)
+fun Byte.toHex(upperCase: Boolean = false) = String.format(if (upperCase) "%02X" else "%02x", this)
 
 
 fun String.toWord() = toInt(radix = 16).toWord()

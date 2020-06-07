@@ -39,7 +39,7 @@ class Instruction(private val opcode: OpCode, val mnemonic: String, private val 
 
 
 class OpCode(private val code: String) {
-    private val pattern = Regex(code.replace(Regex("[n]"), "[0-F]"))
+    private val pattern = Regex(code.replace(Regex("[nxyk]"), "[0-F]"))
 
     fun encode(symbol: String, value: String) = OpCode(code.replace(symbol, value))
 
@@ -60,7 +60,11 @@ class OpCode(private val code: String) {
     fun toByteArray() = code.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 
     companion object {
-        operator fun invoke(code: Word) = OpCode(code.toHex())
+        operator fun invoke(byte: Byte) = OpCode(byte.toHex(upperCase = true))
+
+        operator fun invoke(msb: Byte, lsb: Byte) = OpCode(Word(msb, lsb))
+
+        operator fun invoke(word: Word) = OpCode(word.toHex(upperCase = true))
     }
 }
 
@@ -110,9 +114,8 @@ class ImmediateValue(private val symbol: String, private val nibbles: Int) : Ope
     }
 
     override fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments {
-        TODO("Not yet implemented")
+        return args.addValue(opcode.decode(Regex("$symbol{$nibbles}"), instruction))
     }
-
 }
 
 class Address(private val symbol: String) : Operand() {
@@ -133,9 +136,8 @@ class Register(private val symbol: String) : Operand() {
     }
 
     override fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments {
-        TODO("Not yet implemented")
+        return args.addRegister(opcode.decode(symbol, instruction))
     }
-
 }
 
 class Literal(private val symbol: String) : Operand() {
@@ -146,7 +148,7 @@ class Literal(private val symbol: String) : Operand() {
     }
 
     override fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments {
-        TODO("Not yet implemented")
+        return args.addValue(symbol)
     }
 }
 

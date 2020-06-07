@@ -2,15 +2,12 @@ package com.vtence.chip8
 
 object Disassembler {
     fun disassemble(assembly: Assembly, symbolTable: SymbolTable): Program {
-        val statements = mutableListOf<Statement>()
-
-        while (assembly.hasRemaining()) {
-            val opcode = assembly.read()
-            val (instruction, args) = disassemble(opcode, symbolTable)
-            statements.add(AssemblyCode(instruction.mnemonic, args.toList()))
+        val statements = assembly.readRemaining().map {
+            val (instruction, args) = disassemble(it, symbolTable)
+            AssemblyCode(instruction.mnemonic, args.toList())
         }
 
-        return Program(statements)
+        return Program(statements.toList())
     }
 
     private fun disassemble(opcode: OpCode, symbolTable: SymbolTable): Pair<Instruction, Arguments> {

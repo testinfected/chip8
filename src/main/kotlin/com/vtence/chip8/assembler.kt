@@ -20,8 +20,10 @@ object Assembler {
             when (statement) {
                 is AssemblyCode -> assemble(statement, into)
                 is LabelDefinition -> defineLabel(statement, into)
-                is Comment -> {}
-                BlankLine -> {}
+                is Comment -> {
+                }
+                BlankLine -> {
+                }
             }
         }
     }
@@ -103,7 +105,15 @@ class Assembly(private val rom: ByteBuffer, private val base: Int) {
 
     fun hasRemaining() = rom.hasRemaining()
 
-    fun read() = OpCode(Word(rom.get(), rom.get()))
+    fun read() = if (rom.remaining() > 1) OpCode(rom.get(), rom.get()) else OpCode(rom.get())
+
+    fun readRemaining(): Sequence<OpCode> {
+        return sequence {
+            while (hasRemaining()) {
+                yield(read())
+            }
+        }
+    }
 
     operator fun get(index: Int): Byte = rom.get(index)
 
@@ -136,10 +146,8 @@ class Assembly(private val rom: ByteBuffer, private val base: Int) {
     }
 }
 
-fun print(assembly: Assembly, upperCase: Boolean = true): String {
-    return assembly.rom().joinToString("") {
-        "%02x".format(it).let { hex -> if (upperCase) hex.toUpperCase() else hex }
-    }
+fun print(assembly: Assembly, upperCase: Boolean = true) = assembly.rom().joinToString("") {
+    it.toHex(upperCase)
 }
 
 
@@ -188,8 +196,12 @@ class Arguments(
         }
     }
 
-    fun addAddress(address: String): Arguments {
-        return Arguments(toList() + address, offset, symbolTable)
+    fun addRegister(register: String) = addValue("V${register}");
+
+    fun addAddress(address: String) = addValue(address)
+
+    fun addValue(value: String): Arguments {
+        return Arguments(toList() + value, offset, symbolTable)
     }
 
     fun toList() = args.asSequence().toList()
