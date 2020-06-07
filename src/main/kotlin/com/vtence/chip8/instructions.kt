@@ -53,14 +53,14 @@ class OpCode(private val code: String) {
         } ?: throw IllegalArgumentException("$symbol not found in $code")
     }
 
-    fun matches(other: OpCode) = pattern.matches(other.code)
+    fun matches(other: OpCode) = pattern.matches(other.code.toUpperCase())
 
     override fun toString() = code
 
     fun toByteArray() = code.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 
     companion object {
-        operator fun invoke(code: Word) = OpCode(code.toString())
+        operator fun invoke(code: Word) = OpCode(code.toHex())
     }
 }
 
@@ -106,7 +106,7 @@ sealed class Operand {
 class ImmediateValue(private val symbol: String, private val nibbles: Int) : Operand() {
 
     override fun assemble(opcode: OpCode, args: Arguments): OpCode {
-        return opcode.encode(Regex("$symbol{$nibbles}"), args.nibbles(nibbles))
+        return opcode.encode(Regex("$symbol{$nibbles}"), args.nibbles(nibbles).toHex().takeLast(nibbles))
     }
 
     override fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments {
@@ -118,7 +118,7 @@ class ImmediateValue(private val symbol: String, private val nibbles: Int) : Ope
 class Address(private val symbol: String) : Operand() {
 
     override fun assemble(opcode: OpCode, args: Arguments): OpCode {
-        return opcode.encode(symbol, args.address())
+        return opcode.encode(symbol, args.address().toHex().takeLast(symbol.length))
     }
 
     override fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments {
@@ -129,7 +129,7 @@ class Address(private val symbol: String) : Operand() {
 class Register(private val symbol: String) : Operand() {
 
     override fun assemble(opcode: OpCode, args: Arguments): OpCode {
-        return opcode.encode(symbol, args.register())
+        return opcode.encode(symbol, args.register().toHex().takeLast(symbol.length))
     }
 
     override fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments {

@@ -27,7 +27,7 @@ object Assembler {
     }
 
     private fun resolveSymbols(assembly: Assembly) {
-        symbolTable.resolve { (offset: Int, address: Int) ->
+        symbolTable.resolve { (offset: Int, address: Word) ->
             assembly[offset] = Word(assembly[offset].high or address.msb.low, address.lsb)
         }
     }
@@ -44,33 +44,33 @@ object Assembler {
     }
 
     private fun defineLabel(statement: LabelDefinition, into: Assembly) {
-        symbolTable[statement.label] = into.position
+        symbolTable[statement.label] = into.position.toWord()
     }
 }
 
 fun assemble(sourceCode: String) = Assembler.assemble(Program.fromSource(sourceCode))
 
 
-class SymbolTable(private val defaultAddress: Int) {
-    private val resolved = mutableMapOf<String, Int>()
+class SymbolTable(private val defaultAddress: Word) {
+    private val resolved = mutableMapOf<String, Word>()
     private val unresolved = mutableMapOf<Int, String>()
 
-    operator fun set(label: String, address: Int) {
+    operator fun set(label: String, address: Word) {
         if (label in resolved) throw IllegalArgumentException("label `$label` already defined")
         resolved[label] = address
     }
 
     operator fun contains(symbol: String) = symbol in resolved
 
-    operator fun get(symbol: String): Int =
+    operator fun get(symbol: String): Word =
         resolved[symbol] ?: throw IllegalArgumentException("symbol `$symbol` not found")
 
-    fun unresolved(atAddress: Int, symbol: String): String {
-        unresolved[atAddress] = symbol
-        return defaultAddress.toString(16)
+    fun unresolved(atOffset: Int, symbol: String): Word {
+        unresolved[atOffset] = symbol
+        return defaultAddress
     }
 
-    fun resolve(action: (Pair<Int, Int>) -> Unit) {
+    fun resolve(action: (Pair<Int, Word>) -> Unit) {
         unresolved
             .map { (address, symbol) -> address to get(symbol) }
             .forEach {
@@ -79,8 +79,12 @@ class SymbolTable(private val defaultAddress: Int) {
             }
     }
 
-    private fun markResolved(address: Int) {
-        unresolved.remove(address)
+    private fun markResolved(offset: Int) {
+        unresolved.remove(offset)
+    }
+
+    companion object {
+        operator fun invoke(defaultAddress: Int) = SymbolTable(defaultAddress.toWord())
     }
 }
 
@@ -150,34 +154,34 @@ class Arguments(
         }
     }
 
-    fun register(): String {
+    fun register(): Byte {
         return args.next().let {
             Regex("V(?<number>$HEX)").matchEntire(it)?.let { match ->
                 val (number, _) = match.destructured
-                number
+                number.toWord().lsb
             } ?: throw IllegalArgumentException("invalid register: $it")
         }
     }
 
-    fun address(): String {
+    fun address(): Word {
         args.next().let {
             Regex("$HEX{1,3}").matchEntire(it)?.value?.let { address ->
-                return address.padStart(3, '0')
+                return address.toWord()
             }
 
-            if (it in symbolTable) return symbolTable[it].toString(16)
+            if (it in symbolTable) return symbolTable[it]
 
             return symbolTable.unresolved(offset, it)
         }
     }
 
-    fun nibbles(count: Int): String {
+    fun nibbles(count: Int): Word {
         args.next().let {
-            Regex("$HEX{1,$count}").matchEntire(it)?.value?.let { hex ->
-                return hex.padStart(count, '0')
+            Regex("$HEX{1,$count}").matchEntire(it)?.value?.let { nibbles ->
+                return nibbles.toWord()
             }
             Regex("$BIT{${count.times(4)}}").matchEntire(it)?.value?.let { bits ->
-                return bits.replace(".", "0").toInt(radix = 2).toString(16)
+                return bits.replace(".", "0").toInt(radix = 2).toWord()
             }
 
             throw IllegalArgumentException("expected $count nibble(s), not $it")

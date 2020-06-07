@@ -3,23 +3,14 @@ package com.vtence.chip8
 
 data class Word(val msb: Byte, val lsb: Byte) {
 
-    override fun toString(): String {
-        return String.format("%02X%02X", msb, lsb)
-    }
+    fun toHex() = msb.toHex() + lsb.toHex()
 
     companion object {
         operator fun invoke(word: Int) = Word((word ushr 8 and 0xFF).toByte(), (word and 0xFF).toByte())
-     }
+    }
 }
 
-
 fun Int.toWord() = Word(this)
-
-val Int.msb: Byte
-    get() = toWord().msb
-
-val Int.lsb: Byte
-    get() = toWord().lsb
 
 
 infix fun Byte.and(other: Byte): Byte = this and other.toInt()
@@ -36,5 +27,7 @@ val Byte.high: Byte
 val Byte.low: Byte
     get() = this and 0xF
 
+fun Byte.toHex() = String.format("%02x", this)
 
 
+fun String.toWord() = toInt(radix = 16).toWord()
