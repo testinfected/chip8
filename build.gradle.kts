@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "1.3.72"
+    kotlin("jvm") version "1.4.20"
 }
 
 group = "com.vtence.chip8"
@@ -11,8 +11,8 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.6.2")
-    testImplementation("com.natpryce:hamkrest:1.7.0.3")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.7.0")
+    testImplementation("com.natpryce:hamkrest:1.8.0.1")
 }
 
 tasks.test {
@@ -24,9 +24,9 @@ tasks.test {
 
 tasks {
     compileKotlin {
-        kotlinOptions.jvmTarget = "1.8"
+        kotlinOptions.jvmTarget = "11"
     }
     compileTestKotlin {
-        kotlinOptions.jvmTarget = "1.8"
+        kotlinOptions.jvmTarget = "11"
     }
 }

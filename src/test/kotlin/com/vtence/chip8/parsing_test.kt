@@ -75,9 +75,7 @@ class ParsingTest {
 
     @Test
     fun `assembly statement with operands, followed by a comment`() {
-        val statement = parse("ADD V1, 10 ; add 10h to register V1")
-
-        when (statement) {
+        when (val statement = parse("ADD V1, 10 ; add 10h to register V1")) {
             is AssemblyCode -> {
                 assertThat(statement.mnemonic, equalTo("ADD"))
                 assertThat(statement.operands, equalTo(listOf("V1", "10")))
@@ -90,9 +88,7 @@ class ParsingTest {
 
     @Test
     fun `label definition`() {
-        val statement = parse("LOOP:")
-
-        when (statement) {
+        when (val statement = parse("LOOP:")) {
             is LabelDefinition -> {
                 assertThat(statement.label, equalTo("LOOP"))
                 assertThat(statement.toString(), equalTo("LOOP:"))
@@ -103,9 +99,7 @@ class ParsingTest {
 
     @Test
     fun `label definition with a comment`() {
-        val statement = parse("LOOP: ; label definition")
-
-        when (statement) {
+        when (val statement = parse("LOOP: ; label definition")) {
             is LabelDefinition -> {
                 assertThat(statement.label, equalTo("LOOP"))
                 assertThat(statement.toString(), equalTo("LOOP: ; label definition"))

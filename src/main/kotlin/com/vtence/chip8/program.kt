@@ -4,7 +4,7 @@ import java.io.Reader
 import java.io.StringReader
 
 
-class Program(private val statements: List<Statement>): Sequence<Statement> {
+class Program(private val statements: List<Statement>) : Sequence<Statement> {
 
     val lines: List<String>
         get() = map { it.toString() }.toList()
@@ -12,7 +12,7 @@ class Program(private val statements: List<Statement>): Sequence<Statement> {
     override fun iterator() = statements.iterator()
 
     companion object {
-        operator fun invoke(statements: Statement) = Program(listOf(statements))
+        operator fun invoke(vararg statements: Statement) = Program(statements.toList())
 
         fun read(source: Reader) = Program(source.readLines().map { parse(it) })
 

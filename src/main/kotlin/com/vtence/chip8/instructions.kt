@@ -18,22 +18,22 @@ import com.vtence.chip8.Operand.Companion.word
 import java.lang.IllegalArgumentException
 
 
-class Instruction(private val opcode: OpCode, val mnemonic: String, private val operands: List<Operand>) {
+class Instruction(private val pattern: OpCode, val mnemonic: String, private val operands: List<Operand>) {
     val arity = operands.size
 
-    fun assemble(arguments: Arguments): OpCode {
-        return operands.fold(opcode) { instruction, each -> each.assemble(instruction, arguments) }
+    fun assemble(args: Arguments): OpCode {
+        return operands.fold(pattern) { result, operand -> operand.encode(args, into = result) }
     }
 
-    fun disassemble(code: OpCode, arguments: Arguments): Arguments {
-       return operands.fold(arguments) { args, each -> each.disassemble(code, args, opcode) }
+    fun disassemble(code: OpCode, into: Arguments): Arguments {
+       return operands.fold(into) { result, arg -> arg.decode(from = code, result, template = pattern) }
     }
 
-    fun matches(other: OpCode) = opcode.matches(other)
+    fun matches(other: OpCode) = pattern.matches(other)
 
     companion object {
-        fun op(opcode: String, mnemonic: String, vararg operands: Operand) =
-            Instruction(OpCode(opcode), mnemonic, operands.toList())
+        fun op(pattern: String, mnemonic: String, vararg operands: Operand) =
+            Instruction(OpCode(pattern), mnemonic, operands.toList())
     }
 }
 
@@ -41,15 +41,15 @@ class Instruction(private val opcode: OpCode, val mnemonic: String, private val 
 class OpCode(private val code: String) {
     private val pattern = Regex(code.replace(Regex("[nxyk]"), "[0-F]"))
 
-    fun encode(symbol: String, value: String) = OpCode(code.replace(symbol, value))
+    fun pack(into: String, value: String) = OpCode(code.replace(into, value))
 
-    fun encode(symbol: Regex, value: String) = OpCode(code.replace(symbol, value))
+    fun pack(into: Regex, value: String) = OpCode(code.replace(into, value))
 
-    fun decode(symbol: String, value: OpCode) = decode(Regex(symbol), value)
+    fun unpack(from: OpCode, symbol: String) = unpack(from, Regex(symbol))
 
-    fun decode(symbol: Regex, value: OpCode): String {
+    fun unpack(from: OpCode, symbol: Regex): String {
         return symbol.find(code)?.let {
-            value.code.substring(it.range)
+            from.code.substring(it.range)
         } ?: throw IllegalArgumentException("$symbol not found in $code")
     }
 
@@ -70,9 +70,9 @@ class OpCode(private val code: String) {
 
 
 sealed class Operand {
-    abstract fun assemble(opcode: OpCode, args: Arguments): OpCode
+    abstract fun encode(args: Arguments, into: OpCode): OpCode
 
-    abstract fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments
+    abstract fun decode(from: OpCode, args: Arguments, template: OpCode): Arguments
 
     companion object {
         val addr = Address("nnn")
@@ -109,58 +109,55 @@ sealed class Operand {
 
 class ImmediateValue(private val symbol: String, private val nibbles: Int) : Operand() {
 
-    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
-        return opcode.encode(Regex("$symbol{$nibbles}"), args.nibbles(nibbles).toHex().takeLast(nibbles))
+    override fun encode(args: Arguments, into: OpCode): OpCode {
+        return into.pack(into = Regex("$symbol{$nibbles}"), args.popNibbles(nibbles).toHex().takeLast(nibbles))
     }
 
-    override fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments {
-        return args.addValue(opcode.decode(Regex("$symbol{$nibbles}"), instruction))
+    override fun decode(from: OpCode, args: Arguments, template: OpCode): Arguments {
+        return args.pushValue(template.unpack(from, Regex("$symbol{$nibbles}")))
     }
 }
 
 class Address(private val symbol: String) : Operand() {
 
-    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
-        return opcode.encode(symbol, args.address().toHex().takeLast(symbol.length))
+    override fun encode(args: Arguments, into: OpCode): OpCode {
+        return into.pack(symbol, args.popAddress().toHex().takeLast(symbol.length))
     }
 
-    override fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments {
-        return args.addAddress(opcode.decode(symbol, instruction))
+    override fun decode(from: OpCode, args: Arguments, template: OpCode): Arguments {
+        return args.pushAddress(template.unpack(from, symbol))
     }
 }
 
 class Register(private val symbol: String) : Operand() {
 
-    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
-        return opcode.encode(symbol, args.register().toHex().takeLast(symbol.length))
+    override fun encode(args: Arguments, into: OpCode): OpCode {
+        return into.pack(symbol, args.popRegister().toHex().takeLast(symbol.length))
     }
 
-    override fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments {
-        return args.addRegister(opcode.decode(symbol, instruction))
+    override fun decode(from: OpCode, args: Arguments, template: OpCode): Arguments {
+        return args.pushRegister(template.unpack(from, symbol))
     }
 }
 
 class Literal(private val symbol: String) : Operand() {
 
-    override fun assemble(opcode: OpCode, args: Arguments): OpCode {
-        args.literal(symbol)
-        return opcode
+    override fun encode(args: Arguments, into: OpCode): OpCode {
+        args.popLiteral(symbol)
+        return into
     }
 
-    override fun disassemble(instruction: OpCode, args: Arguments, opcode: OpCode): Arguments {
-        return args.addValue(symbol)
+    override fun decode(from: OpCode, args: Arguments, template: OpCode): Arguments {
+        return args.pushValue(symbol)
     }
 }
 
 
 object InstructionsTable {
-    fun list(mnemonic: String, arity: Int): Sequence<Instruction> {
-        return list(mnemonic)
+    fun list(mnemonic: String, arity: Int): List<Instruction> {
+        return instructionSet
+            .filter { it.mnemonic == mnemonic }
             .filter { it.arity == arity }
-    }
-
-    fun list(mnemonic: String): Sequence<Instruction> {
-        return instructionSet.filter { it.mnemonic == mnemonic }
     }
 
     fun lookup(opcode: OpCode): Instruction {
@@ -168,7 +165,7 @@ object InstructionsTable {
     }
 
     // See http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#3.1
-    private val instructionSet = sequenceOf(
+    private val instructionSet = listOf(
         op("000E", "CLS"),
         op("00EE", "RET"),
         op("0nnn", "SYS", addr),

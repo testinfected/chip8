@@ -10,7 +10,7 @@ class DisassemblerTest {
     fun `an empty program`() {
         val assembly = assemble("""""")
 
-        val program = disassemble(assembly.rom());
+        val program = disassemble(assembly.rom())
 
         assertThat("lines", program.lines, List<String>::isEmpty)
     }
@@ -23,7 +23,7 @@ class DisassemblerTest {
         """.trimIndent()
         )
 
-        val program = disassemble(assembly.rom());
+        val program = disassemble(assembly.rom())
 
         assertThat("lines", program.lines, List<String>::containsAll, listOf("CLS"))
     }
@@ -69,7 +69,7 @@ class DisassemblerTest {
             LD V9, [I]
         """.trimIndent()
 
-        val program = disassemble(assemble(sourceCode).rom());
+        val program = disassemble(assemble(sourceCode).rom())
 
         assertThat("lines", program.lines, equalTo(sourceCode.lines()))
     }
@@ -82,7 +82,7 @@ class DisassemblerTest {
         """.trimIndent()
         )
 
-        val program = disassemble(assembly.rom());
+        val program = disassemble(assembly.rom())
 
         assertThat("lines", program.lines, List<String>::containsAll, listOf(
             "JP 4EF"
@@ -98,7 +98,7 @@ class DisassemblerTest {
         """.trimIndent()
         )
 
-        val program = disassemble(assembly.rom());
+        val program = disassemble(assembly.rom())
 
         assertThat("lines", program.lines, List<String>::containsAll, listOf(
             "WORD EF04",
